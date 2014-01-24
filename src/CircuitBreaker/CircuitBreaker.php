@@ -23,6 +23,9 @@
  */
 namespace CircuitBreaker;
 
+use Closure;
+use Exception;
+
 /**
  * CircuitBreaker
  * 
@@ -33,12 +36,114 @@ namespace CircuitBreaker;
 class CircuitBreaker
 {
     /**
+     * The name of the circuit breaker
+     * 
+     * @var string
+     */
+    protected $name;
+    
+    /**
+     * Callable
+     * 
+     * @var mixed
+     */
+    protected $subject;
+    
+    /**
      * Constructor
      * 
      * @return void
      */
-    public function __construct()
+    public function __construct($name, $subject)
     {
+        $this->setName($name);
+        $this->setSubject($subject);
+    }
+    
+    /**
+     * Return the name of the CircuitBreaker
+     * 
+     * @return string
+     */
+    public function getName()
+    {
+        return $this->name;
+    }
+    
+    /**
+     * Return the subject that this CircuitBreaker wraps
+     * 
+     * @return mixed
+     */
+    public function getSubject()
+    {
+        return $this->subject;
+    }
+    
+    /**
+     * Set the name of the CircuitBreaker
+     * 
+     * @param string $name The name of the CircuitBreaker
+     * 
+     * @return CircuitBreaker
+     */
+    public function setName($name)
+    {
+        $this->name = $name;
+        return $this;
+    }
+    
+    /**
+     * Set the callable subject that this CircuitBreaker wraps
+     * 
+     * @param mixed $subject
+     * 
+     * @return CircuitBreaker
+     */
+    public function setSubject($subject)
+    {
+        $this->subject = $subject;
+        return $this;
+    }
+    
+    /**
+     * Implementation of PHP magic __invoke method
+     * 
+     * @throws Exception
+     * @return mixed
+     */
+    public function __invoke()
+    {
+        $subject = $this->getSubject();
         
+        if ($subject instanceof Closure) {
+            if (is_callable($subject, false)) {
+                return call_user_func_array($subject, func_get_args());
+            }
+        }
+        
+        throw new Exception();
+    }
+    
+    /**
+     * Implementation of PHPs magic __call method
+     * 
+     * @param string $name      The name of the method to call
+     * @param mixed  $arguments The parameters to supply
+     * 
+     * @throws Exception
+     * @return mixed
+     */
+    public function __call($name, $parameters)
+    {
+        $subject = $this->getSubject();
+        
+        if (is_object($subject)) {
+            if (is_callable(array($subject, $name), false)) {
+                return call_user_func_array(array($subject, $name), $parameters);
+            }
+        }
+        
+        throw new Exception();
     }
 }
