@@ -31,6 +31,11 @@ class MySubject
     {
         echo 'I have done something with ' . $parameter . PHP_EOL;
     }
+
+    public function doOtherThing()
+    {
+        echo 'I have done another thing' . PHP_EOL;
+    }
 }
 
 $subject = new MySubject();
@@ -40,3 +45,5 @@ $circuitBreaker = new CircuitBreaker(array($subject, 'doSomething'), new Optimis
 for ($i = 0; $i < 5; $i++) {
     $circuitBreaker->doSomething($i);
 }
+
+$circuitBreaker->doOtherThing();

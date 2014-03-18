@@ -44,6 +44,18 @@ class CircuitBreakerSpec extends ObjectBehavior
         $this->doSomething()->shouldReturn('did something');
     }
 
+    function it_calls_subject_method_even_if_not_circuit_breakered(PolicyInterface $policy)
+    {
+        $subject = new MockService();
+
+        $policy->request(Argument::any(), Argument::any())->willReturn(true);
+        $policy->response(Argument::any())->willReturn(true);
+
+        $this->beConstructedWith(array($subject, 'doSomething'), $policy);
+
+        $this->doOtherThing()->shouldReturn('did other thing');
+    }
+
     function it_throws_exception_if_subject_method_does_not_exist(PolicyInterface $policy)
     {
         $subject = new MockService();
@@ -127,6 +139,8 @@ class CircuitBreakerSpec extends ObjectBehavior
 
         $this->shouldThrow('\RuntimeException')->during('doException');
     }
+
+
 }
 
 class MockService
@@ -134,6 +148,11 @@ class MockService
     public function doSomething()
     {
         return 'did something';
+    }
+
+    public function doOtherThing()
+    {
+        return 'did other thing';
     }
 
     public function doException()

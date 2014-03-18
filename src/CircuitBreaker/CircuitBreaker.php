@@ -53,6 +53,10 @@ class CircuitBreaker
     /**
      * PHP magic __call method implementation
      *
+     * If the method that is passed to the __call function is not a method that we
+     * are interested in wrapping - we simply proxy the call to the service without
+     * intervention.
+     * 
      * @param string $method
      * @param array  $parameters
      *
@@ -67,6 +71,11 @@ class CircuitBreaker
         if (! is_callable($callable, false, $callable_name)) {
             throw new InvalidArgumentException('The method ' . $callable_name . ' is not callable');
         }
+
+        if ($method != $callable[1]) {
+            return call_user_func_array(array($callable[0], $method), $parameters);
+        }
+
         return $this->doRequest($callable, $parameters);
     }
 
