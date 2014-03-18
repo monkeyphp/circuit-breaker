@@ -62,10 +62,12 @@ class CircuitBreaker
      */
     public function __call($method, $parameters = array())
     {
-        if (! is_callable(array($this->getSubject(), $method), false, $callable_name)) {
+        $callable = (is_array($this->getSubject())) ? $this->getSubject() : array($this->getSubject(), $method);
+
+        if (! is_callable($callable, false, $callable_name)) {
             throw new InvalidArgumentException('The method ' . $callable_name . ' is not callable');
         }
-        return $this->doRequest(array($this->getSubject(), $method), $parameters);
+        return $this->doRequest($callable, $parameters);
     }
 
     /**
