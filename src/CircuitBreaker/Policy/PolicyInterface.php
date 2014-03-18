@@ -8,7 +8,7 @@ interface PolicyInterface
     /**
      * Request
      */
-    public function request();
+    public function request($callback, $parameters = array());
 
     /**
      * Response

@@ -2,6 +2,7 @@
 
 namespace CircuitBreaker;
 
+use CircuitBreaker\Exception\OpenException;
 use CircuitBreaker\Policy\PolicyInterface;
 use Closure;
 use Exception;
@@ -12,7 +13,7 @@ class CircuitBreaker
     /**
      * The subject that the CircuitBreaker is wrapping
      *
-     * @var object|Closure
+     * @var object|array|Closure
      */
     protected $subject;
 
@@ -27,15 +28,15 @@ class CircuitBreaker
     /**
      * Constructor
      *
-     * @param object|Closure $subject
-     * @param PolicyInterface $policy
+     * @param object|Closure|array $subject The subject
+     * @param PolicyInterface      $policy  The Policy
      *
      * @return void
      */
     public function __construct($subject, PolicyInterface $policy)
     {
-        $this->subject = $subject;
-        $this->policy = $policy;
+        $this->setSubject($subject);
+        $this->setPolicy($policy);
     }
 
     /**
@@ -46,14 +47,14 @@ class CircuitBreaker
      */
     public function __invoke()
     {
-        return $this->doRequest($this->subject, func_get_args());
+        return $this->doRequest($this->getSubject(), func_get_args());
     }
 
     /**
      * PHP magic __call method implementation
      *
      * @param string $method
-     * @param array $parameters
+     * @param array  $parameters
      *
      * @throws InvalidArgumentException
      * @throws OpenException
@@ -61,25 +62,71 @@ class CircuitBreaker
      */
     public function __call($method, $parameters = array())
     {
-        if (! is_callable(array($this->subject, $method), false, $callable_name)) {
+        if (! is_callable(array($this->getSubject(), $method), false, $callable_name)) {
             throw new InvalidArgumentException('The method ' . $callable_name . ' is not callable');
         }
-        return $this->doRequest(array($this->subject, $method), $parameters);
+        return $this->doRequest(array($this->getSubject(), $method), $parameters);
+    }
+
+    /**
+     * Return the subject that this CircuitBreaker wraps
+     *
+     * @return callable|array|object
+     */
+    protected function getSubject()
+    {
+        return $this->subject;
+    }
+
+    /**
+     * Set the subject that this CircuitBreaker is wrapping
+     *
+     * @param callable|array|object $subject
+     *
+     * @return CircuitBreaker
+     */
+    protected function setSubject($subject)
+    {
+        $this->subject = $subject;
+        return $this;
+    }
+
+    /**
+     * Return the Policy instance that will manage this CircuitBreaker
+     *
+     * @return PolicyInterface
+     */
+    protected function getPolicy()
+    {
+        return $this->policy;
+    }
+
+    /**
+     * Set the Policy instance
+     *
+     * @param PolicyInterface $policy
+     *
+     * @return CircuitBreaker
+     */
+    protected function setPolicy(PolicyInterface $policy)
+    {
+        $this->policy = $policy;
+        return $this;
     }
 
     /**
      * Make the request to the wrapped subject
      *
-     * @param Closure $callback   Closure
+     * @param array|Closure $callback   Closure
      * @param array    $parameters Array of parameters
      *
-     * @return \CircuitBreakerException\OpenException|\Exception
-     * @throws \CircuitBreaker\Exception\OpenException
+     * @return mixed
+     * @throws OpenException|Exception
      */
-    protected function doRequest(Closure $callback, array $parameters = array())
+    protected function doRequest($callback, array $parameters = array())
     {
         if (! $this->getPolicy()->request($callback, $parameters)) {
-            return new \CircuitBreaker\Exception\OpenException();
+            throw new OpenException();
         }
 
         try {
@@ -89,7 +136,7 @@ class CircuitBreaker
         }
 
         if (! $this->getPolicy()->response($response)) {
-            throw new \CircuitBreaker\Exception\OpenException();
+            throw new OpenException();
         }
 
         if ($response instanceof Exception) {

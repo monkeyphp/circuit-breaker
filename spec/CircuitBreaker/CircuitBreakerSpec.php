@@ -2,72 +2,130 @@
 
 namespace spec\CircuitBreaker;
 
+use CircuitBreaker\Policy\PolicyInterface;
 use PhpSpec\ObjectBehavior;
+use Prophecy\Argument;
 
 class CircuitBreakerSpec extends ObjectBehavior
 {
-    function it_invokes_a_callback()
+    function it_invokes_a_subject_callback(PolicyInterface $policy)
     {
-        $callable = function() { return 'callback response'; };
+        $subject = function() { return 'callback response'; };
 
-        $this->beConstructedWith($callable);
+        $policy->request(Argument::any(), Argument::any())->willReturn(true);
+        $policy->response(Argument::any())->willReturn(true);
 
-        $this()->shouldReturn('foo');
+        $this->beConstructedWith($subject, $policy);
+
+        $this()->shouldReturn('callback response');
     }
 
-    function it_invokes_object_method()
+    function it_invokes_subject_method(PolicyInterface $policy)
     {
-        $mockService = new MockService();
+        $subject = new MockService();
 
-        $this->beConstructedWith(array($mockService, 'doSomething'));
+        $policy->request(Argument::any(), Argument::any())->willReturn(true);
+        $policy->response(Argument::any())->willReturn(true);
+
+        $this->beConstructedWith(array($subject, 'doSomething'), $policy);
 
         $this()->shouldReturn('did something');
     }
 
-    function it_calls_object_method()
+    function it_calls_subject_method(PolicyInterface $policy)
     {
-        $mockService = new MockService();
+        $subject = new MockService();
 
-        $this->beConstructedWith($mockService);
+        $policy->request(Argument::any(), Argument::any())->willReturn(true);
+        $policy->response(Argument::any())->willReturn(true);
+
+        $this->beConstructedWith($subject, $policy);
 
         $this->doSomething()->shouldReturn('did something');
     }
 
-    function it_throws_exception_if_object_method_does_not_exist()
+    function it_throws_exception_if_subject_method_does_not_exist(PolicyInterface $policy)
     {
-        $mockService = new MockService();
+        $subject = new MockService();
 
-        $this->beConstructedWith($mockService);
+        $policy->request(Argument::any(), Argument::any())->willReturn(true);
+        $policy->response(Argument::any())->willReturn(true);
+
+        $this->beConstructedWith($subject, $policy);
 
         $this->shouldThrow('\InvalidArgumentException')->during('doNothing');
     }
 
-    function it_calls_object_magic_method()
+    function it_calls_subject_magic_method(PolicyInterface $policy)
     {
-        $magicService = new MagicService();
+        $subject = new MagicService();
 
-        $this->beConstructedWith($magicService);
+        $policy->request(Argument::any(), Argument::any())->willReturn(true);
+        $policy->response(Argument::any())->willReturn(true);
+
+        $this->beConstructedWith($subject, $policy);
 
         $this->magic()->shouldReturn('Magic called');
     }
 
-    function it_calls_object_invoke_method()
+    function it_calls_subject_invoke_method(PolicyInterface $policy)
     {
-        $invokableService = new InvokableService();
+        $subject = new InvokableService();
 
-        $this->beConstructedWith($invokableService);
+        $policy->request(Argument::any(), Argument::any())->willReturn(true);
+        $policy->response(Argument::any())->willReturn(true);
+
+        $this->beConstructedWith($subject, $policy);
 
         $this()->shouldReturn('Invoked');
     }
 
-    function it_calls_object_invoke_method_with_parameters()
+    function it_calls_subject_invoke_method_with_parameters(PolicyInterface $policy)
     {
-        $invokableService = new InvokableService();
+        $subject = new InvokableService();
 
-        $this->beConstructedWith($invokableService);
+        $policy->request(Argument::any(), Argument::any())->willReturn(true);
+        $policy->response(Argument::any())->willReturn(true);
+
+        $this->beConstructedWith($subject, $policy);
 
         $param = 5;
         $this($param)->shouldReturn('Invoked ' . $param);
+    }
+
+
+    function it_returns_open_exception_if_policy_request_returns_false(PolicyInterface $policy)
+    {
+        $subject = new MockService();
+        $policy->request(Argument::any(), Argument::any())->willReturn(false);
+
+        $this->beConstructedWith($subject, $policy);
+
+        $this->shouldThrow('\CircuitBreaker\Exception\OpenException')->during('doSomething');
+    }
+
+    function it_returns_open_exception_if_policy_response_returns_false(PolicyInterface $policy)
+    {
+        $subject = new MockService();
+
+        $policy->request(Argument::any(), Argument::any())->willReturn(true);
+        $policy->response(Argument::any())->willReturn(false);
+
+        $this->beConstructedWith($subject, $policy);
+
+        $this->shouldThrow('\CircuitBreaker\Exception\OpenException')->during('doSomething');
+    }
+
+    function it_returns_subject_exception_if_policy_response_returns_true(PolicyInterface $policy)
+    {
+        $subject = new MockService();
+
+        $policy->request(Argument::any(), Argument::any())->willReturn(true);
+        $policy->response(Argument::any())->willReturn(true);
+
+        $this->beConstructedWith($subject, $policy);
+
+        $this->shouldThrow('\RuntimeException')->during('doException');
     }
 }
 
@@ -76,6 +134,11 @@ class MockService
     public function doSomething()
     {
         return 'did something';
+    }
+
+    public function doException()
+    {
+        throw new \RuntimeException();
     }
 }
 
